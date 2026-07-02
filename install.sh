@@ -75,22 +75,6 @@ apt-get update -qq
 apt-get install -y -qq curl git unzip openssl systemd >/dev/null 2>&1
 ok "System dependencies installed"
 
-# ── Check memory & setup swap if needed ──
-TOTAL_RAM=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
-TOTAL_RAM_GB=$(echo "scale=2; $TOTAL_RAM / 1024 / 1024" | bc -l 2>/dev/null || echo 0)
-SWAP_EXISTS=$(swapon --show 2>/dev/null | wc -l)
-
-if (( $(echo "$TOTAL_RAM_GB < 2" | bc -l 2>/dev/null || echo 1) )) && [[ "$SWAP_EXISTS" -eq 0 ]]; then
-  warn "Low memory detected (${TOTAL_RAM_GB}G RAM, no swap)"
-  log "Creating 1G swap file for build..."
-  fallocate -l 1G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=1024 2>/dev/null
-  chmod 600 /swapfile
-  mkswap /swapfile >/dev/null 2>&1
-  swapon /swapfile >/dev/null 2>&1
-  ok "Swap created (1G)"
-  SWAP_CREATED=1
-fi
-
 # ── Install Bun ──
 if ! command -v bun &>/dev/null; then
   log "Installing Bun runtime..."
@@ -125,14 +109,28 @@ fi
 
 cd "$INSTALL_DIR"
 
+# ── Setup swap (cegah OOM Killer saat install/build di STB RAM kecil) ──
+if [[ $(free -m | awk '/^Mem:/{print $2}') -lt 1024 ]] && [[ ! -f /swapfile ]]; then
+  log "RAM kecil terdeteksi, membuat swap 1GB..."
+  fallocate -l 1G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=1024
+  chmod 600 /swapfile
+  mkswap /swapfile >/dev/null
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  ok "Swap 1GB aktif"
+elif [[ -f /swapfile ]]; then
+  swapon /swapfile 2>/dev/null || true
+  ok "Swap sudah ada, diaktifkan"
+fi
+
 # ── Install JS dependencies ──
 log "Installing JavaScript dependencies..."
-bun install --production 2>&1 | tail -1
+bun install --production --no-cache 2>&1 | tail -20
 ok "Dependencies installed"
 
 # ── Build frontend ──
 log "Building frontend..."
-bun run build 2>&1 | tail -1
+NODE_OPTIONS="--max-old-space-size=512" bun run build 2>&1 | tail -20
 ok "Frontend built"
 
 # ── Create data directory ──
