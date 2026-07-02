@@ -6,7 +6,7 @@ set -euo pipefail
 # Target: Armbian / Debian / Ubuntu (ARM64, x86_64)
 # ──────────────────────────────────────────────
 
-REPO_URL="https://github.com/yourusername/nodepanel.git"
+REPO_URL="https://github.com/razannnnnn/nodepanel.git"
 INSTALL_DIR="/opt/nodepanel"
 NODEPANEL_PORT="${NODEPANEL_PORT:-3001}"
 NODEPANEL_SECRET="${NODEPANEL_SECRET:-$(tr -dc A-Za-z0-9 </dev/urandom 2>/dev/null || openssl rand -hex 32)}"
