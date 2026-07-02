@@ -53,6 +53,11 @@ Browser → React + Vite → REST/WS (adaptive polling) → Hono API (Bun Backen
 - Cache static `systeminformation` results (board info, etc.)
 - Validation with Zod on all API inputs
 
+### Git Workflow (Branching)
+- Setiap fitur baru pakai branch `feat/<nama-fitur>` (contoh: `feat/docker-plugin`)
+- Branch `main` dijaga tetap bersih — development dilakukan di branch fitur
+- Fitur di-test dulu, baru di-merge ke `main` setelah benar-benar berfungsi
+
 ### Frontend
 - Tailwind CSS v4 utility classes, minimal custom CSS
 - Arctic Slate theme: `#0B1017` bg, `#78A9FF` primary, `#4ADE80` success, `#F87171` danger

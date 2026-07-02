@@ -18,6 +18,12 @@ You are helping build NodePanel, a modern lightweight Linux server dashboard for
 - High-frequency polling reads `/proc` directly; static hardware info cached.
 - Destructive actions always require explicit confirmation + audit log entry.
 
+## Git Workflow
+
+- Fitur baru dikerjakan di branch `feat/<nama-fitur>` (misal: `feat/backup-plugin`)
+- `main` adalah branch stabil — tidak ada development langsung di `main`
+- Merge hanya setelah fitur di-test dan berfungsi penuh
+
 ## Design System
 
 - **Theme:** Arctic Slate (dark only)

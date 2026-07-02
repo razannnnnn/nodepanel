@@ -31,6 +31,12 @@ src/
 └── types/         # TypeScript type definitions
 ```
 
+## Git Workflow
+
+- Setiap fitur baru dikerjakan di branch `feat/<nama-fitur>` (contoh: `feat/file-manager`)
+- Branch `main` hanya berisi kode yang sudah stabil dan teruji
+- Fitur harus di-test dan berfungsi penuh sebelum di-merge ke `main`
+
 ## Critical Rules
 
 1. All destructive actions (reboot, shutdown, kill, service stop, package remove) must have:
