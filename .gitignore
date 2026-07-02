@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.codegraph/
+.opencode/
+*.db
+*.db-journal
+*.sqlite
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+.playwright-mcp/

@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/* ─── Default (dark) theme ─── */
+:root,
+[data-theme="dark"] {
+  --bg-app: #0B1017;
+  --bg-sidebar: #101722;
+  --bg-card: #141D2A;
+  --bg-card-hover: #1A2538;
+  --bg-topbar: rgba(11, 16, 23, 0.8);
+  --bg-input: #0B1017;
+
+  --text-primary: #E6EDF7;
+  --text-secondary: #8B9EB0;
+  --text-muted: #5A6F82;
+
+  --border-default: #1E2A3A;
+  --border-light: #2A3A4E;
+
+  --color-primary: #78A9FF;
+  --color-primary-hover: #5A8FEF;
+  --color-primary-muted: rgba(120, 169, 255, 0.12);
+  --color-success: #4ADE80;
+  --color-success-muted: rgba(74, 222, 128, 0.12);
+  --color-danger: #F87171;
+  --color-danger-muted: rgba(248, 113, 113, 0.12);
+  --color-warning: #FBBF24;
+  --color-warning-muted: rgba(251, 191, 36, 0.12);
+
+  --glow-primary: 0 0 20px rgba(120, 169, 255, 0.08);
+  --glow-success: 0 0 20px rgba(74, 222, 128, 0.08);
+}
+
+/* ─── Light theme ─── */
+[data-theme="light"] {
+  --bg-app: #F5F7FA;
+  --bg-sidebar: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F8FAFC;
+  --bg-topbar: rgba(245, 247, 250, 0.85);
+  --bg-input: #FFFFFF;
+
+  --text-primary: #1A1A2E;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+
+  --border-default: #E2E8F0;
+  --border-light: #CBD5E1;
+
+  --glow-primary: 0 0 20px rgba(120, 169, 255, 0.06);
+  --glow-success: 0 0 20px rgba(74, 222, 128, 0.06);
+}
+
+@theme {
+  --font-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "Fira Code", monospace;
+}
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+  }
+
+  html[data-theme="light"] * {
+    scrollbar-color: var(--border-light) transparent;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--color-primary-muted);
+    color: var(--color-primary);
+  }
+}
+
+@layer utilities {
+  .glow-primary {
+    box-shadow: var(--glow-primary);
+  }
+  .glow-success {
+    box-shadow: var(--glow-success);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-primary) 0%, #A78BFA 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-secondary {
+    color: var(--text-secondary);
+  }
+  .text-muted {
+    color: var(--text-muted);
+  }
+  .border-default {
+    border-color: var(--border-default);
+  }
+  .divide-default > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--border-default);
+  }
+  .bg-card {
+    background-color: var(--bg-card);
+  }
+  .bg-card-hover:hover {
+    background-color: var(--bg-card);
+  }
+  .bg-app {
+    background-color: var(--bg-app);
+  }
+}
