@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_URL="https://github.com/razannnnnn/nodepanel.git"
 INSTALL_DIR="/opt/nodepanel"
 NODEPANEL_PORT="${NODEPANEL_PORT:-3001}"
-NODEPANEL_SECRET="${NODEPANEL_SECRET:-$(tr -dc A-Za-z0-9 </dev/urandom 2>/dev/null || openssl rand -hex 32)}"
+NODEPANEL_SECRET="${NODEPANEL_SECRET:-$(openssl rand -hex 32)}"
 
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; BLUE='\033[0;34m'; NC='\033[0m'; BOLD='\033[1m'
@@ -72,22 +72,26 @@ fi
 # ── Install system deps ──
 log "Installing system dependencies..."
 apt-get update -qq
-apt-get install -y -qq curl git unzip openssl systemd >/dev/null 2>&1
+apt-get install -y -qq curl git unzip openssl systemd rsync >/dev/null 2>&1
 ok "System dependencies installed"
 
 # ── Install Bun ──
-if ! command -v bun &>/dev/null; then
+# NOTE: systemd runs this as root, so bun must live in /root/.bun (not $HOME of
+# whoever invoked sudo) or the service will fail with "bun: not found".
+BUN_BIN="${BUN_BIN:-$HOME/.bun/bin/bun}"
+if [[ ! -x "$BUN_BIN" ]] && ! command -v bun &>/dev/null; then
   log "Installing Bun runtime..."
   curl -fsSL https://bun.sh/install | bash
-  export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
-  export PATH="$BUN_INSTALL/bin:$PATH"
-  if [[ -f "$HOME/.bun/bin/bun" ]]; then
-    ln -sf "$HOME/.bun/bin/bun" /usr/local/bin/bun
-  fi
   ok "Bun $(bun --version) installed"
 else
-  ok "Bun $(bun --version) already installed"
+  ok "Bun $("$BUN_BIN" --version 2>/dev/null || bun --version) already installed"
 fi
+
+if [[ ! -x "$BUN_BIN" ]]; then
+  BUN_BIN="$(command -v bun)"
+fi
+ln -sf "$BUN_BIN" /usr/local/bin/bun
+ok "bun linked to /usr/local/bin/bun"
 
 # ── Clone / copy project ──
 log "Setting up project at ${INSTALL_DIR}..."
@@ -125,12 +129,16 @@ fi
 
 # ── Install JS dependencies ──
 log "Installing JavaScript dependencies..."
-bun install --production --no-cache 2>&1 | tail -20
+bun install --no-cache 2>&1 | tail -20
 ok "Dependencies installed"
 
-# ── Build frontend ──
+# ── Build frontend (needs devDependencies: vite/tsc/tailwind) ──
 log "Building frontend..."
 NODE_OPTIONS="--max-old-space-size=512" bun run build 2>&1 | tail -20
+if [[ ! -f "$INSTALL_DIR/dist/index.html" ]]; then
+  err "Build did not produce dist/index.html — aborting."
+  exit 1
+fi
 ok "Frontend built"
 
 # ── Create data directory ──
@@ -147,12 +155,13 @@ NODEPANEL_HOST=0.0.0.0
 NODEPANEL_DATA_DIR=${DATA_DIR}
 NODEPANEL_SECRET=${NODEPANEL_SECRET}
 EOF
+  chmod 600 "$INSTALL_DIR/.env"
   ok "Configuration created"
 fi
 
 # ── Create systemd service ──
 log "Creating systemd service..."
-cat > /etc/systemd/system/nodepanel.service <<'SERVICEEOF'
+cat > /etc/systemd/system/nodepanel.service <<SERVICEEOF
 [Unit]
 Description=NodePanel - Modern Linux Server Dashboard
 After=network.target
@@ -160,13 +169,13 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/nodepanel
-ExecStart=/usr/local/bin/bun run server/index.ts
+WorkingDirectory=${INSTALL_DIR}
+ExecStart=${BUN_BIN} run server/index.ts
 Restart=always
 RestartSec=5
-EnvironmentFile=/opt/nodepanel/.env
-StandardOutput=append:/etc/nodepanel/logs/panel.log
-StandardError=append:/etc/nodepanel/logs/panel-error.log
+EnvironmentFile=${INSTALL_DIR}/.env
+StandardOutput=append:${DATA_DIR}/logs/panel.log
+StandardError=append:${DATA_DIR}/logs/panel-error.log
 
 [Install]
 WantedBy=multi-user.target

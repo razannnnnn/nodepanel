@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { serve } from "bun";
+import { join, normalize, sep } from "node:path";
 import type { ServerWebSocket } from "bun";
 import { config } from "./config";
 import { getDb, seedAdmin } from "./db";
@@ -35,15 +36,26 @@ app.route("/api/packages", packagesRoutes);
 app.get("/api/health", (c) => c.json({ status: "ok", uptime: process.uptime() }));
 
 // Serve frontend in production
+const DIST_DIR = join(import.meta.dir, "..", "dist");
+const INDEX_HTML = join(DIST_DIR, "index.html");
+
 app.get("/*", async (c) => {
-  try {
-    const file = Bun.file("../dist/index.html");
-    return new Response(file, {
-      headers: { "Content-Type": "text/html" },
-    });
-  } catch {
-    return c.json({ error: "Frontend not built" }, 404);
+  const pathname = decodeURIComponent(new URL(c.req.url).pathname);
+  const rel = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  const filePath = normalize(join(DIST_DIR, rel));
+
+  if (filePath.startsWith(DIST_DIR + sep)) {
+    const file = Bun.file(filePath);
+    if (await file.exists()) return new Response(file);
   }
+
+  const index = Bun.file(INDEX_HTML);
+  if (await index.exists()) {
+    return new Response(index, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
+  return c.json({ error: "Frontend not built" }, 404);
 });
 
 console.log(`[nodepanel] Starting server on ${config.host}:${config.port}`);
