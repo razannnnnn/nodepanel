@@ -45,6 +45,36 @@ curl -fsSL https://raw.githubusercontent.com/razannnnnn/nodepanel/main/install.s
 
 This installs Bun, clones the project to `/opt/nodepanel`, sets up systemd, and starts the panel on port `3001`.
 
+## Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/razannnnnn/nodepanel/main/uninstall.sh -o ~/uninstall.sh
+sudo bash ~/uninstall.sh
+```
+
+This stops and disables the service, removes the systemd unit, and deletes `/opt/nodepanel`.
+
+The data directory `/etc/nodepanel` is **kept** by default, so reinstalling keeps your users, audit log, and logs. To remove it as well:
+
+```bash
+sudo bash ~/uninstall.sh --purge
+```
+
+`--purge` asks you to type `yes` before deleting the database. Add `--yes` to skip that prompt in automation.
+
+| Command | Service + `/opt/nodepanel` | `/etc/nodepanel` | `bun` symlink |
+|---|:--:|:--:|:--:|
+| `uninstall.sh` | removed | kept | kept |
+| `uninstall.sh --purge` | removed | removed | removed if it points into a `.bun` install |
+
+Never removed in either mode: apt packages, the Bun runtime in `~/.bun`, and swap.
+
+Back up the database first if you intend to purge and might reinstall later:
+
+```bash
+sudo tar czf ~/nodepanel-data.tar.gz -C /etc nodepanel
+```
+
 ## Project Structure
 
 ```
