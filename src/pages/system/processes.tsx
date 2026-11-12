@@ -1,18 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, ArrowUpDown, XCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ProcessInfo } from "@/types/system";
-
-const MOCK_PROCESSES: ProcessInfo[] = Array.from({ length: 50 }, (_, i) => ({
-  pid: 1000 + i,
-  name: ["systemd", "sshd", "nginx", "node", "python3", "bash", "cron", "rsyslogd", "dbus-daemon", "NetworkManager"][i % 10]!,
-  cpu: Math.random() * 20,
-  memory: Math.random() * 15,
-  state: ["running", "sleeping", "running", "running", "stopped"][i % 5]!,
-  user: ["root", "www-data", "nobody", "messagebus", "razan"][i % 5]!,
-}));
+import { api } from "@/lib/api";
 
 type SortKey = "pid" | "name" | "cpu" | "memory" | "state";
 
@@ -20,15 +12,43 @@ export function ProcessesPage() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("cpu");
   const [sortAsc, setSortAsc] = useState(false);
+  const [processes, setProcesses] = useState<ProcessInfo[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setProcesses(await api<ProcessInfo[]>("/api/processes"));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load processes");
+    }
+  };
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const killProcess = async (pid: number) => {
+    try {
+      await api("/api/processes/kill", {
+        method: "POST",
+        body: JSON.stringify({ pid, signal: "SIGTERM" }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to kill process");
+    }
+  };
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
     const list = query
-      ? MOCK_PROCESSES.filter(
-          (p) =>
-            p.name.toLowerCase().includes(query) || String(p.pid).includes(query),
+      ? processes.filter(
+          (p) => p.name.toLowerCase().includes(query) || String(p.pid).includes(query),
         )
-      : MOCK_PROCESSES;
+      : processes;
 
     return [...list].sort((a, b) => {
       const aVal = a[sortKey];
@@ -40,7 +60,7 @@ export function ProcessesPage() {
         ? (aVal as number) - (bVal as number)
         : (bVal as number) - (aVal as number);
     });
-  }, [search, sortKey, sortAsc]);
+  }, [search, sortKey, sortAsc, processes]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -65,6 +85,11 @@ export function ProcessesPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "#F87171", color: "#F87171" }}>
+          {error}
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-semibold">Processes</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -139,7 +164,13 @@ export function ProcessesPage() {
                     </td>
                     <td className="px-4 py-2.5 text-sm text-secondary">{proc.user}</td>
                     <td className="px-4 py-2.5 text-right">
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => killProcess(proc.pid)}
+                        title={`Send SIGTERM to ${proc.pid}`}
+                      >
                         <XCircle size={14} className="text-[#F87171]" />
                       </Button>
                     </td>

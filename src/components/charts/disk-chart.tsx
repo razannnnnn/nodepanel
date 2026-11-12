@@ -1,24 +1,13 @@
-import { useMemo } from "react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from "recharts";
 import { formatBytes } from "@/lib/utils";
+import { useMetricsStore } from "@/stores/metrics";
 
-interface DiskChartProps {
-  total: number;
-  used: number;
-}
-
-export function DiskChart({ total, used }: DiskChartProps) {
-  const data = useMemo(() => {
-    const now = Date.now();
-    return Array.from({ length: 30 }, (_, i) => {
-      const base = used + (Math.random() - 0.5) * total * 0.01;
-      return {
-        time: new Date(now - (29 - i) * 2000).toLocaleTimeString(),
-        used: Math.min(total, Math.max(0, base)),
-        total,
-      };
-    });
-  }, [used, total]);
+export function DiskChart() {
+  const history = useMetricsStore((s) => s.history);
+  const data = history.map((h) => ({
+    time: new Date(h.t).toLocaleTimeString(),
+    used: h.diskUsed,
+  }));
 
   return (
     <div className="h-48 w-full">
@@ -54,7 +43,7 @@ export function DiskChart({ total, used }: DiskChartProps) {
             strokeWidth={2}
             fill="url(#diskGrad)"
             dot={false}
-            animationDuration={300}
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

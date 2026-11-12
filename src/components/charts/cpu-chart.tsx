@@ -6,23 +6,14 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { useMemo } from "react";
+import { useMetricsStore } from "@/stores/metrics";
 
-interface CpuChartProps {
-  currentUsage: number;
-}
-
-export function CpuChart({ currentUsage }: CpuChartProps) {
-  const data = useMemo(() => {
-    const now = Date.now();
-    return Array.from({ length: 30 }, (_, i) => {
-      const base = currentUsage + (Math.random() - 0.5) * 8;
-      return {
-        time: new Date(now - (29 - i) * 2000).toLocaleTimeString(),
-        value: Math.min(100, Math.max(0, base)),
-      };
-    });
-  }, [currentUsage]);
+export function CpuChart() {
+  const history = useMetricsStore((s) => s.history);
+  const data = history.map((h) => ({
+    time: new Date(h.t).toLocaleTimeString(),
+    value: h.cpuUsage,
+  }));
 
   return (
     <div className="h-48 w-full">
@@ -53,7 +44,7 @@ export function CpuChart({ currentUsage }: CpuChartProps) {
             strokeWidth={2}
             fill="url(#cpuGrad)"
             dot={false}
-            animationDuration={300}
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

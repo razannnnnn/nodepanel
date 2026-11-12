@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useThemeStore } from "@/stores/theme";
+import { useAuthStore } from "@/stores/auth";
 import { Sun, Moon } from "lucide-react";
 
 export function LoginPage() {
@@ -9,14 +11,24 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const theme = useThemeStore((s) => s.theme);
   const toggleTheme = useThemeStore((s) => s.toggle);
+  const login = useAuthStore((s) => s.login);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    // ponytail: mock login — replace with real auth when backend exists
-    setTimeout(() => setLoading(false), 1000);
+    try {
+      await login(username, password);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -97,6 +109,17 @@ export function LoginPage() {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div
+              className="flex items-start gap-2 rounded-lg border px-3 py-2 text-xs"
+              style={{ borderColor: "#F87171", color: "#F87171", backgroundColor: "#F8717114" }}
+              role="alert"
+            >
+              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <Button type="submit" className="w-full h-10" disabled={loading}>
             {loading ? (

@@ -5,7 +5,7 @@ import { serve } from "bun";
 import { join, normalize, sep } from "node:path";
 import type { ServerWebSocket } from "bun";
 import { config } from "./config";
-import { getDb, seedAdmin } from "./db";
+import { getDb, seedAdmin, validateToken } from "./db";
 import { authRoutes } from "./routes/auth";
 import { systemRoutes } from "./routes/system";
 import { processesRoutes } from "./routes/processes";
@@ -66,9 +66,13 @@ const server = serve<{ wsData: Record<string, unknown> }>({
   fetch(req, server) {
     const url = new URL(req.url);
 
-    // WebSocket upgrade
+    // WebSocket upgrade, authenticated first: browsers cannot set WS headers,
+    // so the session token has to travel as ?token=.
     if (url.pathname === "/ws") {
-      const upgraded = server.upgrade(req);
+      if (!validateToken(url.searchParams.get("token"))) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+      const upgraded = server.upgrade(req, { data: {} });
       if (!upgraded) {
         return new Response("WebSocket upgrade failed", { status: 400 });
       }

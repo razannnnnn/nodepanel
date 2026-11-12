@@ -51,6 +51,14 @@ function migrate(db: Database) {
   `);
 }
 
+export function validateToken(token: string | null | undefined): boolean {
+  if (!token) return false;
+  const row = getDb()
+    .query("SELECT 1 AS ok FROM sessions WHERE token = ? AND expires_at > datetime('now')")
+    .get(token);
+  return !!row;
+}
+
 export function seedAdmin() {
   const db = getDb();
   const existing = db.query("SELECT id FROM users WHERE username = ?").get("admin");

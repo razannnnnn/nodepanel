@@ -1,26 +1,37 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Play, Square, RefreshCw, ToggleLeft, Search } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ServiceInfo } from "@/types/system";
-
-const MOCK_SERVICES: ServiceInfo[] = [
-  { name: "ssh", state: "running", enabled: true, description: "OpenSSH server" },
-  { name: "nginx", state: "running", enabled: true, description: "Nginx web server" },
-  { name: "docker", state: "running", enabled: true, description: "Docker container engine" },
-  { name: "ufw", state: "running", enabled: true, description: "Uncomplicated firewall" },
-  { name: "cron", state: "running", enabled: true, description: "Regular background programs" },
-  { name: "rsyslog", state: "running", enabled: true, description: "System log daemon" },
-  { name: "systemd-journald", state: "running", enabled: true, description: "Journal service" },
-  { name: "dbus", state: "running", enabled: true, description: "D-Bus message bus" },
-  { name: "bluetooth", state: "stopped", enabled: false, description: "Bluetooth service" },
-  { name: "NetworkManager", state: "running", enabled: true, description: "Network manager" },
-];
+import { api } from "@/lib/api";
 
 export function ServicesPage() {
   const [search, setSearch] = useState("");
-  const [services, setServices] = useState(MOCK_SERVICES);
+  const [services, setServices] = useState<ServiceInfo[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setServices(await api<ServiceInfo[]>("/api/services"));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load services");
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const act = async (name: string, action: "start" | "stop" | "restart") => {
+    try {
+      await api(`/api/services/${encodeURIComponent(name)}/${action}`, { method: "POST" });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `Failed to ${action} ${name}`);
+    }
+  };
 
   const filtered = useMemo(
     () =>
@@ -31,16 +42,6 @@ export function ServicesPage() {
       ),
     [search, services],
   );
-
-  function toggleService(name: string) {
-    setServices((prev) =>
-      prev.map((s) =>
-        s.name === name
-          ? { ...s, state: s.state === "running" ? "stopped" : "running" }
-          : s,
-      ),
-    );
-  }
 
   const stateBadge = (state: ServiceInfo["state"]) => {
     const map: Record<string, "success" | "danger" | "warning"> = {
@@ -53,6 +54,11 @@ export function ServicesPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "#F87171", color: "#F87171" }}>
+          {error}
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-semibold">Services</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -102,7 +108,7 @@ export function ServicesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => toggleService(svc.name)}
+                          onClick={() => act(svc.name, svc.state === "running" ? "stop" : "start")}
                           title={svc.state === "running" ? "Stop" : "Start"}
                         >
                           {svc.state === "running" ? (
@@ -111,7 +117,13 @@ export function ServicesPage() {
                             <Play size={14} className="text-[#4ADE80]" />
                           )}
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Restart">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Restart"
+                          onClick={() => act(svc.name, "restart")}
+                        >
                           <RefreshCw size={14} className="text-[#78A9FF]" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Toggle enable">

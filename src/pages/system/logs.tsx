@@ -1,26 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Download } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { LogEntry } from "@/types/system";
-
-const MOCK_LOGS: LogEntry[] = Array.from({ length: 100 }, (_, i) => ({
-  timestamp: new Date(Date.now() - i * 30000).toISOString(),
-  message: [
-    "sshd[1234]: Accepted publickey for root from 192.168.1.1",
-    "systemd[1]: Started nginx.service",
-    "kernel: [12345.678] CPU temperature 52.3°C",
-    "node[5678]: Server listening on port 3000",
-    "sudo: razan : TTY=pts/0 PWD=/home/razan USER=root COMMAND=/bin/systemctl restart nginx",
-    "nginx[9012]: 192.168.1.100 - GET /api/system 200",
-    "systemd[1]: Starting Docker Container Engine...",
-    "kernel: [12346.789] eth0: link up 1000mbps full-duplex",
-  ][i % 8]!,
-  priority: [6, 5, 4, 6, 5, 6, 5, 4][i % 8]!,
-  facility: ["auth", "daemon", "kern", "user", "auth", "daemon", "system", "kern"][i % 8]!,
-}));
+import { api } from "@/lib/api";
 
 const priorityLabel: Record<number, string> = {
   0: "emerg",
@@ -47,19 +32,53 @@ const priorityColor: Record<number, "danger" | "warning" | "default" | "secondar
 export function LogsPage() {
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState<number | null>(null);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLogs(await api<LogEntry[]>("/api/logs?lines=500"));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load logs");
+    }
+  };
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   const filtered = useMemo(
     () =>
-      MOCK_LOGS.filter((log) => {
+      logs.filter((log) => {
         if (search && !log.message.toLowerCase().includes(search.toLowerCase())) return false;
         if (filterPriority !== null && log.priority !== filterPriority) return false;
         return true;
       }),
-    [search, filterPriority],
+    [search, filterPriority, logs],
   );
+
+  const exportLogs = () => {
+    const text = filtered
+      .map((l) => `${l.timestamp} [${priorityLabel[l.priority] ?? l.priority}] ${l.message}`)
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nodepanel-logs-${new Date().toISOString().slice(0, 19)}.log`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "#F87171", color: "#F87171" }}>
+          {error}
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-semibold">Logs</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -101,7 +120,7 @@ export function LogsPage() {
                   style={{ color: "var(--text-primary)" }}
                 />
               </div>
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" onClick={exportLogs}>
                 <Download size={14} />
                 Export
               </Button>

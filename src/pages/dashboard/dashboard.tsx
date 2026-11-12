@@ -108,7 +108,7 @@ export function DashboardPage() {
             <CardTitle>CPU Usage</CardTitle>
           </CardHeader>
           <CardContent>
-            <CpuChart currentUsage={sys.cpu.usage} />
+            <CpuChart />
           </CardContent>
         </Card>
         <Card>
@@ -116,11 +116,7 @@ export function DashboardPage() {
             <CardTitle>Memory Usage</CardTitle>
           </CardHeader>
           <CardContent>
-            <MemoryChart
-              total={sys.memory.total}
-              used={sys.memory.used}
-              percent={sys.memory.percent}
-            />
+            <MemoryChart />
           </CardContent>
         </Card>
         <Card>
@@ -128,10 +124,7 @@ export function DashboardPage() {
             <CardTitle>Network I/O</CardTitle>
           </CardHeader>
           <CardContent>
-            <NetworkChart
-              rxSpeed={sys.network[0]?.rxSpeed ?? 0}
-              txSpeed={sys.network[0]?.txSpeed ?? 0}
-            />
+            <NetworkChart />
           </CardContent>
         </Card>
         <Card>
@@ -139,10 +132,7 @@ export function DashboardPage() {
             <CardTitle>Disk I/O</CardTitle>
           </CardHeader>
           <CardContent>
-            <DiskChart
-              total={sys.storage[0]?.total ?? 0}
-              used={sys.storage[0]?.used ?? 0}
-            />
+            <DiskChart />
           </CardContent>
         </Card>
       </div>

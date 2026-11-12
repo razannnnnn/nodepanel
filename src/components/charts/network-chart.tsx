@@ -1,25 +1,14 @@
-import { useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { formatBytes } from "@/lib/utils";
+import { useMetricsStore } from "@/stores/metrics";
 
-interface NetworkChartProps {
-  rxSpeed: number;
-  txSpeed: number;
-}
-
-export function NetworkChart({ rxSpeed, txSpeed }: NetworkChartProps) {
-  const data = useMemo(() => {
-    const now = Date.now();
-    return Array.from({ length: 30 }, (_, i) => {
-      const rxBase = rxSpeed + (Math.random() - 0.5) * rxSpeed * 0.5;
-      const txBase = txSpeed + (Math.random() - 0.5) * txSpeed * 0.5;
-      return {
-        time: new Date(now - (29 - i) * 2000).toLocaleTimeString(),
-        rx: Math.max(0, rxBase),
-        tx: Math.max(0, txBase),
-      };
-    });
-  }, [rxSpeed, txSpeed]);
+export function NetworkChart() {
+  const history = useMetricsStore((s) => s.history);
+  const data = history.map((h) => ({
+    time: new Date(h.t).toLocaleTimeString(),
+    rx: h.rxSpeed,
+    tx: h.txSpeed,
+  }));
 
   return (
     <div className="h-48 w-full">
@@ -51,7 +40,7 @@ export function NetworkChart({ rxSpeed, txSpeed }: NetworkChartProps) {
             }}
             labelStyle={{ color: "#8B9EB0" }}
             formatter={(value: number, name: string) => [
-              formatBytes(value),
+              `${formatBytes(value)}/s`,
               name === "rx" ? "Download" : "Upload",
             ]}
           />
@@ -62,6 +51,7 @@ export function NetworkChart({ rxSpeed, txSpeed }: NetworkChartProps) {
             strokeWidth={2}
             fill="url(#rxGrad)"
             dot={false}
+            isAnimationActive={false}
           />
           <Area
             type="monotone"
@@ -70,6 +60,7 @@ export function NetworkChart({ rxSpeed, txSpeed }: NetworkChartProps) {
             strokeWidth={2}
             fill="url(#txGrad)"
             dot={false}
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

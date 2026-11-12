@@ -1,40 +1,61 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, ArrowUp, Trash2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PackageInfo } from "@/types/system";
-
-const MOCK_PACKAGES: PackageInfo[] = [
-  { name: "nginx", version: "1.24.0-2", status: "installed", description: "Nginx web server" },
-  { name: "docker-ce", version: "24.0.7", newVersion: "25.0.0", status: "upgradable", description: "Docker CE" },
-  { name: "nodejs", version: "20.11.0", newVersion: "20.12.0", status: "upgradable", description: "Node.js" },
-  { name: "python3", version: "3.11.2", status: "installed", description: "Python interpreter" },
-  { name: "openssh-server", version: "9.2p1-2", status: "installed", description: "OpenSSH server" },
-  { name: "ufw", version: "0.36.2", status: "installed", description: "Firewall" },
-  { name: "curl", version: "7.88.1", status: "installed", description: "URL transfer utility" },
-  { name: "git", version: "2.39.2", newVersion: "2.43.0", status: "upgradable", description: "Version control" },
-  { name: "htop", version: "3.2.2-1", status: "installed", description: "Process viewer" },
-  { name: "fail2ban", version: "1.0.2", status: "installed", description: "Intrusion prevention" },
-];
+import { api } from "@/lib/api";
 
 export function PackagesPage() {
   const [search, setSearch] = useState("");
+  const [packages, setPackages] = useState<PackageInfo[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = async () => {
+    try {
+      setPackages(await api<PackageInfo[]>("/api/packages"));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load packages");
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const run = async (path: string, body: unknown, label: string) => {
+    setBusy(true);
+    try {
+      await api(path, { method: "POST", body: JSON.stringify(body) });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : `${label} failed`);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const filtered = useMemo(
     () =>
-      MOCK_PACKAGES.filter(
+      packages.filter(
         (p) =>
           p.name.toLowerCase().includes(search.toLowerCase()) ||
           p.description.toLowerCase().includes(search.toLowerCase()),
       ),
-    [search],
+    [search, packages],
   );
 
   const upgradable = filtered.filter((p) => p.status === "upgradable");
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: "#F87171", color: "#F87171" }}>
+          {error}
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-semibold">Packages</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -52,7 +73,12 @@ export function PackagesPage() {
                 {upgradable.length} package{upgradable.length > 1 ? "s" : ""} can be upgraded
               </span>
             </div>
-            <Button size="sm" variant="default">
+            <Button
+              size="sm"
+              variant="default"
+              disabled={busy}
+              onClick={() => run("/api/packages/upgrade", {}, "Upgrade")}
+            >
               <ArrowUp size={14} />
               Upgrade All
             </Button>
@@ -117,11 +143,25 @@ export function PackagesPage() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {pkg.status === "upgradable" && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Upgrade">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Upgrade"
+                            disabled={busy}
+                            onClick={() => run("/api/packages/update", { packages: [pkg.name] }, "Upgrade")}
+                          >
                             <ArrowUp size={14} className="text-[#4ADE80]" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Remove">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          title="Remove"
+                          disabled={busy}
+                          onClick={() => run("/api/packages/remove", { packages: [pkg.name] }, "Remove")}
+                        >
                           <Trash2 size={14} className="text-[#F87171]" />
                         </Button>
                       </div>
